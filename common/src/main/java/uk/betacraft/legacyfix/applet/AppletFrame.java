@@ -2,6 +2,7 @@ package uk.betacraft.legacyfix.applet;
 
 import uk.betacraft.legacyfix.Agent;
 import uk.betacraft.legacyfix.Logger;
+import uk.betacraft.legacyfix.addon.AddonLoader;
 import uk.betacraft.legacyfix.proxy.GameArgs;
 
 import javax.swing.JFrame;
@@ -32,7 +33,15 @@ public class AppletFrame extends JFrame {
         this.setLocationRelativeTo(null);
         this.setResizable(true);
         this.validate();
+        if (!AddonLoader.addonsPreAppletInit(this.appletStub.getApplet())) {
+            Logger.error("Addon requested STOP_CODE before applet init");
+            return;
+        }
         this.appletStub.init();
+        if (!AddonLoader.addonsPostAppletInit(this.appletStub.getApplet())) {
+            Logger.error("Addon requested STOP_CODE after applet init");
+            return;
+        }
         this.appletStub.start();
         if (Agent.hasSetting("lf.deawt.disable")) {
             this.setVisible(true);

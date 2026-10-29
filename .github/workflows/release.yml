@@ -5,6 +5,7 @@ on:
     tags:
       - '[0-9][0-9].[0-9]*'
       - '[0-9][0-9].[0-9]*.[0-9]*'
+      - '*-attic.*'
 
 permissions:
   contents: write
@@ -23,6 +24,8 @@ jobs:
       uses: gradle/actions/setup-gradle@v6
     - name: Build
       run: ./gradlew build -PreleaseVersion=${{ github.ref_name }}
+    - name: Collect addon jars
+      run: cp addons/*/build/libs/*.jar build/libs/
     - name: Upload Artifact
       uses: actions/upload-artifact@v7
       with:

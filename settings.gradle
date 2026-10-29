@@ -1,2 +1,3 @@
 rootProject.name = 'legacyfix'
 include 'common', 'fabric', 'fml', 'risugami'
+include 'addons:gamemodeswitch', 'addons:quitgame', 'addons:fullscreen'

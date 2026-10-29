@@ -297,6 +297,7 @@ public class DeAwtPatch extends Patch {
             "    Class clazz = Thread.currentThread().getContextClassLoader().loadClass(\"uk.betacraft.legacyfix.patch.impl.lwjgl.DeAwtPatch$FrameHider\");" +
             "    frame.addHierarchyListener((java.awt.event.HierarchyListener) clazz.newInstance());" +
             "    org.lwjgl.opengl.Display.setDisplayMode(new org.lwjgl.opengl.DisplayMode(child.getWidth(), child.getHeight()));" +
+            "    org.lwjgl.opengl.Display.setLocation(frame.getX(), frame.getY());" +
             "    org.lwjgl.opengl.Display.setResizable(true);" +
             "}"
         );

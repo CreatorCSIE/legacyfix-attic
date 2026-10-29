@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+targetCompatibility = 5
+sourceCompatibility = 5
+
+version = rootProject.version
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly project(':common')
+}
+
+jar {
+    archiveBaseName.set('legacyfix-addon-gamemodeswitch')
+    archiveClassifier.set('')
+    manifest {
+        attributes('LegacyFix-Addon': 'uk.betacraft.legacyfix.addons.gamemodeswitch.GameModeSwitchAddon')
+    }
+}

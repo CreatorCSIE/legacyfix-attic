@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+}
+
+targetCompatibility = 5
+sourceCompatibility = 5
+
+version = rootProject.version
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly files('../../libs/javassist-java5.jar')
+}
+
+jar {
+    archiveBaseName.set('legacyfix-addon-quitgame')
+    archiveClassifier.set('')
+    manifest {
+        attributes('LegacyFix-Addon': 'uk.betacraft.legacyfix.addons.quitgame.QuitGameAddon')
+    }
+}

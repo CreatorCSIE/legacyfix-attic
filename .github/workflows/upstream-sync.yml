@@ -1,0 +1,64 @@
+name: Upstream Sync Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        ref: attic
+    - name: Fetch upstream tags
+      run: |
+        git remote add upstream https://github.com/betacraftuk/legacyfix.git
+        git fetch upstream --tags
+    - name: Compare latest upstream tag with fork base
+      id: diff
+      run: |
+        TAGS=$(git tag --sort=-creatordate | grep -E '^[0-9]{2}\.[0-9]+(\.[0-9]+)?$')
+        LATEST=$(echo "$TAGS" | head -1)
+        BASE=""
+        for t in $TAGS; do
+          if git merge-base --is-ancestor "$t" HEAD; then
+            BASE="$t"
+            break
+          fi
+        done
+        echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+        echo "base=$BASE" >> "$GITHUB_OUTPUT"
+        echo "Latest upstream tag: $LATEST / current attic base: $BASE"
+        if [ -n "$LATEST" ] && [ "$LATEST" != "$BASE" ]; then
+          echo "outdated=true" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Open rebase PR (or issue on conflict)
+      if: steps.diff.outputs.outdated == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        LATEST: ${{ steps.diff.outputs.latest }}
+        BASE: ${{ steps.diff.outputs.base }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git checkout -b "rebase-$LATEST"
+        if git rebase "$LATEST"; then
+          git push -f origin "rebase-$LATEST"
+          gh pr create --base attic --head "rebase-$LATEST" \
+            --title "Rebase attic onto upstream $LATEST" \
+            --body "Automated weekly sync: upstream moved from \`$BASE\` to \`$LATEST\`. Merge only per fork rebase discipline (before a launcher release, or when an upstream fix matters)."
+        else
+          git rebase --abort
+          git checkout attic
+          git branch -D "rebase-$LATEST"
+          gh issue create --title "Upstream $LATEST requires manual rebase (conflicts)" \
+            --body "Weekly sync found upstream \`$LATEST\` (fork base: \`$BASE\`) but the automatic rebase conflicts. Rebase manually per fork discipline."
+        fi

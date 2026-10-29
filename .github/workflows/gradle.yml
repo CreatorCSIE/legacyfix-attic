@@ -2,7 +2,7 @@ name: Nightly Build
 
 on:
   push:
-    branches: [ v3 ]
+    branches: [ attic ]
 
 jobs:
   build:

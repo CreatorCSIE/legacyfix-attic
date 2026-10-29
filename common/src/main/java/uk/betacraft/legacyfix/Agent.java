@@ -1,6 +1,7 @@
 package uk.betacraft.legacyfix;
 
 import javassist.*;
+import uk.betacraft.legacyfix.addon.AddonLoader;
 import uk.betacraft.legacyfix.agent.FabricInjector;
 import uk.betacraft.legacyfix.agent.FmlInjector;
 import uk.betacraft.legacyfix.agent.LaunchWrapperInjector;
@@ -57,6 +58,9 @@ public class Agent {
         active = true;
         final Patcher patcher = new Patcher(ClassPool.getDefault());
         patcher.apply();
+
+        AddonLoader.load();
+        AddonLoader.runPatchPhase(patcher);
 
         Map<String, List<CtTransformer>> ctTransformersMap = patcher.getCtTransformers();
         List<ClassDefinition> definitions = new ArrayList<ClassDefinition>();

@@ -16,6 +16,10 @@ public class AppletStub extends Applet implements java.applet.AppletStub {
         this.add(wrapped, "Center");
     }
 
+    public Applet getApplet() {
+        return this.wrappedApplet;
+    }
+
     @Override
     public void init() {
         this.wrappedApplet.init();

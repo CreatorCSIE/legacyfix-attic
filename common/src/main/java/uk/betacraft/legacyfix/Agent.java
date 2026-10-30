@@ -31,6 +31,27 @@ public class Agent {
     public static boolean loaded = false;
     public static boolean active = false;
 
+    private static String javaStringLiteral(String s) {
+        StringBuilder sb = new StringBuilder("\"");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' || c == '"') {
+                sb.append('\\').append(c);
+            } else if (c == '\n') {
+                sb.append("\\n");
+            } else if (c == '\r') {
+                sb.append("\\r");
+            } else if (c == '\t') {
+                sb.append("\\t");
+            } else if (c < 0x20 || c == '\u007f') {
+                sb.append(String.format("\\u%04x", (int) c));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.append('"').toString();
+    }
+
     public static void premain(String agentArgs, final Instrumentation inst) {
         loaded = true;
         Logger.info("Loading agent (" + VERSION + ")");
@@ -56,6 +77,26 @@ public class Agent {
 
         active = true;
         final Patcher patcher = new Patcher(ClassPool.getDefault());
+
+        // -Dlf.title: force a custom window title in both DeAWT and native LWJGL.
+        // Registered before patcher.apply() so that at runtime this override runs
+        // AFTER DeAwtPatch's setTitle hook (javassist insertBefore: later-registered
+        // code executes first) - lf.deawt.originalTitle keeps capturing the game's
+        // own title, so getTitle()-based version detection (older Forge) still works.
+        final Object titleSetting = SETTINGS.get("lf.title");
+        if (titleSetting != null) {
+            final String titleLiteral = javaStringLiteral(String.valueOf(titleSetting));
+            patcher.addCtTransformer("org.lwjgl.opengl.Display", new CtTransformer() {
+                public void transform(CtClass cc) throws Exception {
+                    try {
+                        cc.getDeclaredMethod("setTitle").insertBefore("$1 = " + titleLiteral + ";");
+                    } catch (Exception ignored) {
+                        // Display variant without setTitle: nothing to override.
+                    }
+                }
+            });
+        }
+
         patcher.apply();
 
         AddonLoader.load();

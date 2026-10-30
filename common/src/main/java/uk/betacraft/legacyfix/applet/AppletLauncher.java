@@ -37,7 +37,9 @@ public class AppletLauncher {
 
             Object instance = entryClass.newInstance();
             if (superClass != null && "java.applet.Applet".equals(superClass.getName())) {
-                new AppletFrame("Minecraft", (Applet) instance).launch();
+                Object titleSetting = uk.betacraft.legacyfix.Agent.getSettings().get("lf.title");
+                String frameTitle = titleSetting != null ? String.valueOf(titleSetting) : "Minecraft";
+                new AppletFrame(frameTitle, (Applet) instance).launch();
             } else {
                 entryClass.getMethod("main", new Class[]{String[].class}).invoke(null, new Object[]{rawArguments});
             }

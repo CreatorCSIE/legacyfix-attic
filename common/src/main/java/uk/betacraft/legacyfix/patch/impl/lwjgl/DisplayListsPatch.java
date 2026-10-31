@@ -2,6 +2,7 @@ package uk.betacraft.legacyfix.patch.impl.lwjgl;
 
 import javassist.CtClass;
 import javassist.CtMethod;
+import javassist.Modifier;
 import uk.betacraft.legacyfix.Agent;
 import uk.betacraft.legacyfix.patch.api.CtTransformer;
 import uk.betacraft.legacyfix.patch.api.Patch;
@@ -28,6 +29,14 @@ public class DisplayListsPatch extends Patch {
                 // 1.7.10: 52272
 
                 CtMethod glGenListsMethod = ctClass.getDeclaredMethod("glGenLists");
+                // Pojav-family LWJGL compat (gl4es/zink) declares glGenLists as a native method
+                // with no body; size clamping there is meaningless and insertBefore would crash.
+                // NB: the bundled javassist's isEmpty() tests ACC_ABSTRACT (0x400) instead of
+                // ACC_NATIVE (0x0100), so native methods report isEmpty() == false - check the
+                // modifier ourselves.
+                if (glGenListsMethod.isEmpty() || Modifier.isNative(glGenListsMethod.getModifiers())) {
+                    return;
+                }
                 glGenListsMethod.insertBefore("" +
                     (Agent.DEBUG ?
                     "System.out.println(\"[LF] glGenLists got called with: \" + $1);" : ""

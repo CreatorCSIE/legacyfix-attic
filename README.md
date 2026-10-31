@@ -13,6 +13,7 @@ Fork of [betacraftuk/legacyfix](https://github.com/betacraftuk/legacyfix), maint
 - **Fork additions**:
   - DeAWT window position fix (`Display.setLocation` in the `setParent` injected body).
   - Custom window title: `-Dlf.title=<title>` forces the window title under both DeAWT and native LWJGL (DeAWT's `getTitle` still reports the game's original title, so Forge version detection is unaffected).
+  - Android-only compat switches (opt-in, for Pojav-family launchers — the desktop Attic launcher never sets these): `-Dlf.gl4esquad` (Tessellator de-triangulation fix for gl4es shadow triangles), `-Dlf.iconnoop` (no-op `Display.setIcon` for QCL's GLFW icon NPE). Also hardened: per-class redefinition so one unverifiable class can't kill the JVM.
   - Addon mechanism: run modular addon jars via `-Dlf.addons=<comma-separated jar paths or a directory>`; each jar declares its entry class in the `LegacyFix-Addon` manifest attribute (API: `uk.betacraft.legacyfix.addon.Addon`, isomorphic to Betacraft v1 addons).
   - First-party addons: `gamemodeswitch` (classic/indev creative mode injection — core logic ported from the Betacraft v1 launcher addon), `quitgame` (window close clears the running flag for a clean loop exit, then the JVM terminates so the launcher regains control — semantics ported from the Betacraft v1 QuitGame addon's quit button), `fullscreen` (fullscreen from game start, Betacraft v1 semantics — no mid-run display switch) — built as `legacyfix-addon-*.jar` alongside the agent.
 

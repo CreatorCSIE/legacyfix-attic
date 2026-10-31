@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 @SuppressWarnings("all")
 public class ResourceIndexHandler extends HandlerBase {
-    private static final Pattern XML_INDEX_PATTERN = Pattern.compile("(http:\\/\\/(s3\\.amazonaws\\.com)\\/(MinecraftResources)\\/)");
+    private static final Pattern XML_INDEX_PATTERN = Pattern.compile("(https?:\\/\\/(s3\\.amazonaws\\.com)\\/(MinecraftResources)\\/)");
     private static final Pattern TXT_INDEX_PATTERN = Pattern.compile("(http:\\/\\/((www\\.)?minecraft\\.net)\\/(resources)\\/)");
 
     private boolean isXmlRequest = false;

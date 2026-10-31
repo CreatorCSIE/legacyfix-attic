@@ -17,7 +17,10 @@ import java.util.regex.Pattern;
 
 @SuppressWarnings("all")
 public class SkinHandler extends HandlerBase {
-    private static final String DOMAIN_PATTERN = "(http:\\/\\/(skins\\.minecraft\\.net|(www\\.)?minecraft\\.net|s3\\.amazonaws\\.com)";
+    // Both protocols are matched (s3.amazonaws.com skin/cape requests come over
+    // https in some versions). Group numbering is preserved: username stays
+    // group 5 in SKIN_PATTERN / CAPE_PATTERN.
+    private static final String DOMAIN_PATTERN = "(https?:\\/\\/(skins\\.minecraft\\.net|(www\\.)?minecraft\\.net|s3\\.amazonaws\\.com)";
 
     private static final Pattern SKIN_PATTERN = Pattern.compile(DOMAIN_PATTERN + "\\/(skin|MinecraftSkins)\\/(.+)?\\.png)");
     private static final Pattern CAPE_PATTERN = Pattern.compile(DOMAIN_PATTERN + "\\/(cloak\\/get\\.jsp\\?user=|MinecraftCloaks\\/)([a-zA-Z0-9_+]+)?(?:\\.png)?)");

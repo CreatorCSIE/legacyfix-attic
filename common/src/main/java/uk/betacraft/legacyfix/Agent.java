@@ -103,7 +103,6 @@ public class Agent {
         AddonLoader.runPatchPhase(patcher);
 
         Map<String, List<CtTransformer>> ctTransformersMap = patcher.getCtTransformers();
-        List<ClassDefinition> definitions = new ArrayList<ClassDefinition>();
 
         for (String className : ctTransformersMap.keySet()) {
             try {
@@ -119,19 +118,15 @@ public class Agent {
                     transformer.transform(ctClass);
                 }
 
-                definitions.add(new ClassDefinition(loadedClass, ctClass.toBytecode()));
+                // Redefine per class, never batched: one class failing verification
+                // (e.g. QCL's Display shim rejects javassist output with a bare
+                // VerifyError) must not take down the whole agent - a VerifyError
+                // escaping premain kills the JVM outright (signal 6).
+                inst.redefineClasses(new ClassDefinition(loadedClass, ctClass.toBytecode()));
                 ctClass.detach();
             } catch (ClassNotFoundException ignored) {
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Logger.error("Failed to prepare redefinition for " + className, e);
-            }
-        }
-
-        if (!definitions.isEmpty()) {
-            try {
-                inst.redefineClasses(definitions.toArray(new ClassDefinition[0]));
-            } catch (Exception e) {
-                Logger.error("Failed to redefine classes!", e);
             }
         }
 

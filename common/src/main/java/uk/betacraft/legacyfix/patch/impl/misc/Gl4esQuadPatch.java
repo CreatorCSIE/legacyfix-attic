@@ -128,10 +128,11 @@ public class Gl4esQuadPatch extends Patch {
 
                         if (opcode == Opcode.PUTSTATIC && prevPos >= 0) {
                             int index = it.u16bitAt(pos + 1);
-                            // ConstPool stores the internal (slash) form; CtClass.getName() is
-                            // dotted. Single-segment obf names like "nw" hid this - multi-package
-                            // repak names (net.minecraft.client.a.d) never matched without the swap.
-                            if (clas.getName().replace('.', '/').equals(cp.getFieldrefClassName(index))
+                            // ConstPool.getFieldrefClassName normalizes to the DOTTED form
+                            // (javassist Utils.toClassName), same as CtClass.getName() - do NOT
+                            // slash-convert here; javap's slash display misled an earlier "fix"
+                            // into breaking multi-package repak names that already matched.
+                            if (clas.getName().equals(cp.getFieldrefClassName(index))
                                 && cp.getFieldrefType(index).equals("Z")
                                 && it.byteAt(prevPos) == Opcode.ICONST_1
                             ) {

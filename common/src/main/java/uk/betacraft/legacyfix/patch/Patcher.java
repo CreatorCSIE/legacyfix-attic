@@ -37,6 +37,7 @@ public class Patcher implements PatchPool {
         new IndevSoundPatch(),
         new IntelGraphicsPatch(),
         new Gl4esQuadPatch(),
+        new Gl4esQuadTablePatch(),
         new ScreenshotPatch(),
         new SeecretSaturdayPatch(),
         new TexturePackFolderPatch(),

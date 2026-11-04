@@ -104,10 +104,25 @@ public class Agent {
 
         Map<String, List<CtTransformer>> ctTransformersMap = patcher.getCtTransformers();
 
-        for (String className : ctTransformersMap.keySet()) {
-            try {
-                Class<?> loadedClass = Class.forName(className);
+        // Snapshot of already-loaded classes. NEVER force-load via
+        // Class.forName() here: loading a class now would (a) permanently hide
+        // it from the load-time ClassFileTransformer below and (b) force it
+        // through redefineClasses, which the JVM rejects for schema changes
+        // ("attempted to change the schema (add/remove fields)") - exactly what
+        // addon guard fields (lf$fullscreen_done etc.) are. Unloaded classes are
+        // left to the load-time path, where adding fields is legal.
+        Map<String, Class<?>> loadedClasses = new HashMap<String, Class<?>>();
+        Class<?>[] allLoaded = inst.getAllLoadedClasses();
+        for (int i = 0; i < allLoaded.length; i++) {
+            loadedClasses.put(allLoaded[i].getName(), allLoaded[i]);
+        }
 
+        for (String className : ctTransformersMap.keySet()) {
+            Class<?> loadedClass = loadedClasses.get(className);
+            if (loadedClass == null) {
+                continue; // not loaded yet: the load-time transformer will apply it
+            }
+            try {
                 ClassPool pool = ClassPool.getDefault();
                 CtClass ctClass = pool.get(className);
                 if (ctClass.isFrozen()) {
@@ -124,7 +139,6 @@ public class Agent {
                 // escaping premain kills the JVM outright (signal 6).
                 inst.redefineClasses(new ClassDefinition(loadedClass, ctClass.toBytecode()));
                 ctClass.detach();
-            } catch (ClassNotFoundException ignored) {
             } catch (Throwable e) {
                 Logger.error("Failed to prepare redefinition for " + className, e);
             }

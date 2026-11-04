@@ -10,6 +10,16 @@ import java.lang.instrument.Instrumentation;
 
 public class LaunchWrapperInjector {
     public static boolean inject(Instrumentation inst) {
+        // Only defer to the LaunchWrapper lifecycle when the game is ACTUALLY
+        // launched through Launch. launchwrapper.jar merely sitting on the
+        // classpath (e.g. a launcher's shared bin directory) is not enough:
+        // for a direct launch the injected TweakClasses hook would never fire,
+        // and returning true here would skip the entire direct patch matrix
+        // (Patcher, addons, redefinitions) - leaving the game running bare.
+        String mainCommand = System.getProperty("sun.java.command", "");
+        if (!mainCommand.startsWith("net.minecraft.launchwrapper.Launch")) {
+            return false;
+        }
         try {
             CtClass launchClass = ClassPool.getDefault().get("net.minecraft.launchwrapper.Launch");
 

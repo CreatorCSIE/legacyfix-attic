@@ -18,10 +18,14 @@ import uk.betacraft.legacyfix.patch.api.PatchPool;
 /**
  * Fullscreen from game start (Betacraft v1 addon semantics).
  *
- * A one-shot flag on the first tick calls Display.setFullscreen(true) exactly once,
- * before the player sees anything. No runtime toggle (e.g. F11) is offered: old
- * classic/indev builds do not survive a mid-run display-mode switch, so switching
- * after startup would risk GL context loss / black screens.
+ * A one-shot flag on the first tick calls Display.setFullscreen(true) exactly
+ * once, before the player sees anything. No runtime toggle (e.g. F11) is
+ * offered: old classic/indev builds do not survive a mid-run display-mode
+ * switch, so switching after startup would risk GL context loss / black screens.
+ *
+ * Scope: native LWJGL sessions only. With DeAWT active the visible window is
+ * owned by the launcher (not a java.awt.Frame in the game JVM), so this addon
+ * is a silent no-op there; fullscreen for DeAWT sessions is launcher-side work.
  *
  * Mount point is discovered like upstream: game loop method (public no-arg void
  * run(), fallback = body calling Display.update()/Keyboard.next()), then the
@@ -45,61 +49,21 @@ public class FullscreenAddon extends Addon {
                     throw new Exception("Failed to add one-shot guard field", e);
                 }
 
-                // Target selection, third time (learned from real-device bounces):
-                // - canvas.getParent() chain hits the game's OWN internal frame,
-                //   which DeAWT keeps hidden via FrameHider; the user's picture
-                //   lives in a different, visible window. Fullscreening the
-                //   hidden one shows a contentless window (attic.3 bug).
-                // - Frame.getFrames()[0] has the same problem (attic.2 bug).
-                // So: fullscreen the frame that is actually SHOWING, and strip
-                // any FrameHider listeners from it so nothing bounces it back.
-                // If the game has an AWT canvas but no visible frame yet, retry
-                // next tick (one-shot only on success). No canvas field at all =
-                // native LWJGL path -> Display.setFullscreen.
-                String canvasField = findCanvasFieldName(cc);
-                if (canvasField == null) {
-                    tick.insertBefore(
-                        "if (!lf$fullscreen_done) {" +
-                        "    lf$fullscreen_done = true;" +
-                        "    try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
-                        "}");
-                    return;
-                }
+                // Scope, final: native LWJGL only. Under DeAWT the game renders
+                // into a window owned by the LAUNCHER (not a java.awt.Frame in
+                // this JVM), so nothing reachable from the agent can fullscreen
+                // it - AWT setFullScreenWindow experiments only ever hit the
+                // game's hidden internal frame (bounce-back / blank window).
+                // Fullscreen for DeAWT sessions belongs to launcher-side window
+                // management. Here: one-shot Display.setFullscreen, a silent
+                // no-op when DeAWT is active.
                 tick.insertBefore(
                     "if (!lf$fullscreen_done) {" +
-                    "    if (this." + canvasField + " == null) { lf$fullscreen_done = true; }" +
-                    "    else {" +
-                    "        java.awt.Frame[] lf$fs_frames = java.awt.Frame.getFrames();" +
-                    "        java.awt.Frame lf$fs_frame = null;" +
-                    "        for (int lf$fs_i = 0; lf$fs_i < lf$fs_frames.length; lf$fs_i++) {" +
-                    "            java.awt.Frame lf$fs_f = lf$fs_frames[lf$fs_i];" +
-                    "            if (lf$fs_f.isDisplayable() && lf$fs_f.isShowing()) { lf$fs_frame = lf$fs_f; break; }" +
-                    "        }" +
-                    "        if (lf$fs_frame != null) {" +
-                    "            lf$fullscreen_done = true;" +
-                    "            java.awt.event.HierarchyListener[] lf$fs_ls = lf$fs_frame.getHierarchyListeners();" +
-                    "            for (int lf$fs_j = 0; lf$fs_j < lf$fs_ls.length; lf$fs_j++) {" +
-                    "                if (\"uk.betacraft.legacyfix.patch.impl.lwjgl.DeAwtPatch$FrameHider\".equals(lf$fs_ls[lf$fs_j].getClass().getName())) { lf$fs_frame.removeHierarchyListener(lf$fs_ls[lf$fs_j]); }" +
-                    "            }" +
-                    "            try {" +
-                    "                java.awt.GraphicsDevice lf$fs_dev = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();" +
-                    "                if (lf$fs_dev.isFullScreenSupported()) { lf$fs_dev.setFullScreenWindow(lf$fs_frame); }" +
-                    "            } catch (Throwable ignored) {}" +
-                    "        }" +
-                    "    }" +
+                    "    lf$fullscreen_done = true;" +
+                    "    try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
                     "}");
             }
         });
-    }
-
-    private static String findCanvasFieldName(CtClass cc) throws Exception {
-        javassist.CtField[] fields = cc.getDeclaredFields();
-        for (int i = 0; i < fields.length; i++) {
-            if ("java.awt.Canvas".equals(fields[i].getType().getName())) {
-                return fields[i].getName();
-            }
-        }
-        return null;
     }
 
     private static CtMethod findRunLoopMethod(CtClass cc) throws Exception {

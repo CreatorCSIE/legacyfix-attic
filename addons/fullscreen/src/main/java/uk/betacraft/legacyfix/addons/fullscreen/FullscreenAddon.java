@@ -45,39 +45,48 @@ public class FullscreenAddon extends Addon {
                     throw new Exception("Failed to add one-shot guard field", e);
                 }
 
-                // Dual path. Under DeAWT the user-visible window is the frame
-                // ANCESTOR OF THE GAME CANVAS (the launcher embeds it there);
-                // Frame.getFrames()[0] can hit the game's own hidden internal
-                // frame instead - DeAwtPatch's FrameHider keeps it hidden and
-                // would bounce fullscreen straight back (setVisible(false) on
-                // SHOWING_CHANGED). So walk canvas.getParent() to the frame and
-                // strip any FrameHider listeners as a belt-and-braces measure.
-                // With no AWT canvas present (native LWJGL), use Display.setFullscreen.
+                // Target selection, third time (learned from real-device bounces):
+                // - canvas.getParent() chain hits the game's OWN internal frame,
+                //   which DeAWT keeps hidden via FrameHider; the user's picture
+                //   lives in a different, visible window. Fullscreening the
+                //   hidden one shows a contentless window (attic.3 bug).
+                // - Frame.getFrames()[0] has the same problem (attic.2 bug).
+                // So: fullscreen the frame that is actually SHOWING, and strip
+                // any FrameHider listeners from it so nothing bounces it back.
+                // If the game has an AWT canvas but no visible frame yet, retry
+                // next tick (one-shot only on success). No canvas field at all =
+                // native LWJGL path -> Display.setFullscreen.
                 String canvasField = findCanvasFieldName(cc);
-                String awtPath =
-                    "    java.awt.Component lf$fs_comp = " + (canvasField == null ? "null" : ("this." + canvasField)) + ";" +
-                    "    java.awt.Frame lf$fs_frame = null;" +
-                    "    if (lf$fs_comp != null) {" +
-                    "        java.awt.Container lf$fs_p = lf$fs_comp.getParent();" +
-                    "        while (lf$fs_p != null && !(lf$fs_p instanceof java.awt.Frame)) { lf$fs_p = lf$fs_p.getParent(); }" +
-                    "        if (lf$fs_p != null) { lf$fs_frame = (java.awt.Frame) lf$fs_p; }" +
-                    "    }" +
-                    "    if (lf$fs_frame != null) {" +
-                    "        java.awt.event.HierarchyListener[] lf$fs_ls = lf$fs_frame.getHierarchyListeners();" +
-                    "        for (int lf$fs_i = 0; lf$fs_i < lf$fs_ls.length; lf$fs_i++) {" +
-                    "            if (\"uk.betacraft.legacyfix.patch.impl.lwjgl.DeAwtPatch$FrameHider\".equals(lf$fs_ls[lf$fs_i].getClass().getName())) { lf$fs_frame.removeHierarchyListener(lf$fs_ls[lf$fs_i]); }" +
-                    "        }" +
-                    "        try {" +
-                    "            java.awt.GraphicsDevice lf$fs_dev = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();" +
-                    "            if (lf$fs_dev.isFullScreenSupported()) { lf$fs_dev.setFullScreenWindow(lf$fs_frame); }" +
-                    "        } catch (Throwable ignored) {}" +
-                    "    } else {" +
-                    "        try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
-                    "    }";
+                if (canvasField == null) {
+                    tick.insertBefore(
+                        "if (!lf$fullscreen_done) {" +
+                        "    lf$fullscreen_done = true;" +
+                        "    try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
+                        "}");
+                    return;
+                }
                 tick.insertBefore(
                     "if (!lf$fullscreen_done) {" +
-                    "    lf$fullscreen_done = true;" +
-                    awtPath +
+                    "    if (this." + canvasField + " == null) { lf$fullscreen_done = true; }" +
+                    "    else {" +
+                    "        java.awt.Frame[] lf$fs_frames = java.awt.Frame.getFrames();" +
+                    "        java.awt.Frame lf$fs_frame = null;" +
+                    "        for (int lf$fs_i = 0; lf$fs_i < lf$fs_frames.length; lf$fs_i++) {" +
+                    "            java.awt.Frame lf$fs_f = lf$fs_frames[lf$fs_i];" +
+                    "            if (lf$fs_f.isDisplayable() && lf$fs_f.isShowing()) { lf$fs_frame = lf$fs_f; break; }" +
+                    "        }" +
+                    "        if (lf$fs_frame != null) {" +
+                    "            lf$fullscreen_done = true;" +
+                    "            java.awt.event.HierarchyListener[] lf$fs_ls = lf$fs_frame.getHierarchyListeners();" +
+                    "            for (int lf$fs_j = 0; lf$fs_j < lf$fs_ls.length; lf$fs_j++) {" +
+                    "                if (\"uk.betacraft.legacyfix.patch.impl.lwjgl.DeAwtPatch$FrameHider\".equals(lf$fs_ls[lf$fs_j].getClass().getName())) { lf$fs_frame.removeHierarchyListener(lf$fs_ls[lf$fs_j]); }" +
+                    "            }" +
+                    "            try {" +
+                    "                java.awt.GraphicsDevice lf$fs_dev = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();" +
+                    "                if (lf$fs_dev.isFullScreenSupported()) { lf$fs_dev.setFullScreenWindow(lf$fs_frame); }" +
+                    "            } catch (Throwable ignored) {}" +
+                    "        }" +
+                    "    }" +
                     "}");
             }
         });

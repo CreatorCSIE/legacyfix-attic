@@ -45,30 +45,52 @@ public class FullscreenAddon extends Addon {
                     throw new Exception("Failed to add one-shot guard field", e);
                 }
 
-                // Dual path: under DeAWT the game window is an AWT Frame and
-                // LWJGL's native setFullscreen is a no-op there (DeAwtPatch does
-                // not stub it), so use AWT exclusive fullscreen on the frame.
-                // With no AWT window present (native LWJGL), fall back to
-                // Display.setFullscreen.
-                tick.insertBefore(
-                    "if (!lf$fullscreen_done) {" +
-                    "    lf$fullscreen_done = true;" +
-                    "    java.awt.Frame[] lf$fs_frames = java.awt.Frame.getFrames();" +
+                // Dual path. Under DeAWT the user-visible window is the frame
+                // ANCESTOR OF THE GAME CANVAS (the launcher embeds it there);
+                // Frame.getFrames()[0] can hit the game's own hidden internal
+                // frame instead - DeAwtPatch's FrameHider keeps it hidden and
+                // would bounce fullscreen straight back (setVisible(false) on
+                // SHOWING_CHANGED). So walk canvas.getParent() to the frame and
+                // strip any FrameHider listeners as a belt-and-braces measure.
+                // With no AWT canvas present (native LWJGL), use Display.setFullscreen.
+                String canvasField = findCanvasFieldName(cc);
+                String awtPath =
+                    "    java.awt.Component lf$fs_comp = " + (canvasField == null ? "null" : ("this." + canvasField)) + ";" +
                     "    java.awt.Frame lf$fs_frame = null;" +
-                    "    for (int lf$fs_i = 0; lf$fs_i < lf$fs_frames.length; lf$fs_i++) {" +
-                    "        if (lf$fs_frames[lf$fs_i].isDisplayable()) { lf$fs_frame = lf$fs_frames[lf$fs_i]; break; }" +
+                    "    if (lf$fs_comp != null) {" +
+                    "        java.awt.Container lf$fs_p = lf$fs_comp.getParent();" +
+                    "        while (lf$fs_p != null && !(lf$fs_p instanceof java.awt.Frame)) { lf$fs_p = lf$fs_p.getParent(); }" +
+                    "        if (lf$fs_p != null) { lf$fs_frame = (java.awt.Frame) lf$fs_p; }" +
                     "    }" +
                     "    if (lf$fs_frame != null) {" +
+                    "        java.awt.event.HierarchyListener[] lf$fs_ls = lf$fs_frame.getHierarchyListeners();" +
+                    "        for (int lf$fs_i = 0; lf$fs_i < lf$fs_ls.length; lf$fs_i++) {" +
+                    "            if (\"uk.betacraft.legacyfix.patch.impl.lwjgl.DeAwtPatch$FrameHider\".equals(lf$fs_ls[lf$fs_i].getClass().getName())) { lf$fs_frame.removeHierarchyListener(lf$fs_ls[lf$fs_i]); }" +
+                    "        }" +
                     "        try {" +
                     "            java.awt.GraphicsDevice lf$fs_dev = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();" +
                     "            if (lf$fs_dev.isFullScreenSupported()) { lf$fs_dev.setFullScreenWindow(lf$fs_frame); }" +
                     "        } catch (Throwable ignored) {}" +
                     "    } else {" +
                     "        try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
-                    "    }" +
+                    "    }";
+                tick.insertBefore(
+                    "if (!lf$fullscreen_done) {" +
+                    "    lf$fullscreen_done = true;" +
+                    awtPath +
                     "}");
             }
         });
+    }
+
+    private static String findCanvasFieldName(CtClass cc) throws Exception {
+        javassist.CtField[] fields = cc.getDeclaredFields();
+        for (int i = 0; i < fields.length; i++) {
+            if ("java.awt.Canvas".equals(fields[i].getType().getName())) {
+                return fields[i].getName();
+            }
+        }
+        return null;
     }
 
     private static CtMethod findRunLoopMethod(CtClass cc) throws Exception {

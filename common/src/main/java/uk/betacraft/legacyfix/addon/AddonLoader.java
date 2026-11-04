@@ -223,9 +223,12 @@ public class AddonLoader {
     }
 
     private static boolean runLifecycle(Object gameInstance, boolean pre) {
-        for (Iterator<Addon> it = loaded.iterator(); it.hasNext(); ) {
-            Addon addon = it.next();
-            it.remove();
+        // Iterate a snapshot: the pre and post passes both walk the SAME loaded
+        // list, so consuming (removing) entries here would leave the post pass
+        // with nothing to run (addons hooking only postAppletInit never fired).
+        List<Addon> snapshot = new ArrayList<Addon>(loaded);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Addon addon = snapshot.get(i);
             try {
                 Addon.WhatToDo result = pre
                     ? addon.preAppletInit(gameInstance, loaded)

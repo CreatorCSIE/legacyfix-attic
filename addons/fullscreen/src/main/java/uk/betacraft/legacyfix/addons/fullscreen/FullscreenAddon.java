@@ -45,11 +45,27 @@ public class FullscreenAddon extends Addon {
                     throw new Exception("Failed to add one-shot guard field", e);
                 }
 
+                // Dual path: under DeAWT the game window is an AWT Frame and
+                // LWJGL's native setFullscreen is a no-op there (DeAwtPatch does
+                // not stub it), so use AWT exclusive fullscreen on the frame.
+                // With no AWT window present (native LWJGL), fall back to
+                // Display.setFullscreen.
                 tick.insertBefore(
                     "if (!lf$fullscreen_done) {" +
                     "    lf$fullscreen_done = true;" +
-                    "    try { org.lwjgl.opengl.Display.setFullscreen(true); }" +
-                    "    catch (Throwable ignored) {}" +
+                    "    java.awt.Frame[] lf$fs_frames = java.awt.Frame.getFrames();" +
+                    "    java.awt.Frame lf$fs_frame = null;" +
+                    "    for (int lf$fs_i = 0; lf$fs_i < lf$fs_frames.length; lf$fs_i++) {" +
+                    "        if (lf$fs_frames[lf$fs_i].isDisplayable()) { lf$fs_frame = lf$fs_frames[lf$fs_i]; break; }" +
+                    "    }" +
+                    "    if (lf$fs_frame != null) {" +
+                    "        try {" +
+                    "            java.awt.GraphicsDevice lf$fs_dev = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();" +
+                    "            if (lf$fs_dev.isFullScreenSupported()) { lf$fs_dev.setFullScreenWindow(lf$fs_frame); }" +
+                    "        } catch (Throwable ignored) {}" +
+                    "    } else {" +
+                    "        try { org.lwjgl.opengl.Display.setFullscreen(true); } catch (Throwable ignored) {}" +
+                    "    }" +
                     "}");
             }
         });

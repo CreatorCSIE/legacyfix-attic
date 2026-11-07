@@ -15,6 +15,7 @@ public class URLHandlers {
     private static final List<Class<? extends HandlerBase>> handlers = Arrays.asList(
         SkinHandler.class,
         ResourceIndexHandler.class,
+        ResourceDownloadHandler.class,
         JoinServerHandler.class,
         IndevAntiPiracyHandler.class,
         LevelListHandler.class,

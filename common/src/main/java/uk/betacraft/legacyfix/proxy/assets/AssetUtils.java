@@ -419,6 +419,16 @@ public class AssetUtils {
         return listFiles.toArray(new File[0]);
     }
 
+    public static AssetObject getAssetByKey(String key) {
+        for (AssetObject asset : assets) {
+            if (asset.key.equals(key)) {
+                return asset;
+            }
+        }
+
+        return null;
+    }
+
     public static AssetObject getAssetFromExpectedPath(String path) {
         if (assets.isEmpty()) {
             try {

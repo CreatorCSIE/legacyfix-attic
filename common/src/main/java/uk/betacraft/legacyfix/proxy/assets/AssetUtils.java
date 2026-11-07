@@ -420,6 +420,17 @@ public class AssetUtils {
     }
 
     public static AssetObject getAssetByKey(String key) {
+        // Lazy-init like getAssetFromExpectedPath: classic SoundEngine downloads
+        // its hardcoded file list without ever requesting the XML index, so in
+        // that flow initAssets() has not run yet and the list would be empty.
+        if (assets.isEmpty()) {
+            try {
+                initAssets(getAssetIndex());
+            } catch (FileNotFoundException e) {
+                Logger.error("getAssetByKey", e);
+            }
+        }
+
         for (AssetObject asset : assets) {
             if (asset.key.equals(key)) {
                 return asset;

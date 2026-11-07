@@ -106,9 +106,25 @@ public class GameArgs {
 
                 Logger.debug("Found assets dir: " + absPath);
                 return absPath;
-            } else {
-                Logger.error("getAssetsDir", "Couldn't find assets root directory! Please specify the path to your assets directory with the -Dlf.assetsDir argument.");
             }
+
+            // Launcher layouts like Attic keep assets next to the versions dir:
+            // {root}/assets + {root}/versions/<id> (gameDir). Walk up from gameDir.
+            File dir = new File(getGameDir()).getAbsoluteFile().getParentFile();
+            for (int i = 0; i < 3 && dir != null; i++) {
+                File candidate = new File(dir, "assets");
+                if (new File(candidate, "objects").isDirectory()) {
+                    String absPath = candidate.getAbsolutePath();
+                    Agent.setSetting("lf.assetsDir", absPath);
+
+                    Logger.debug("Found assets dir near gameDir: " + absPath);
+                    return absPath;
+                }
+
+                dir = dir.getParentFile();
+            }
+
+            Logger.error("getAssetsDir", "Couldn't find assets root directory! Please specify the path to your assets directory with the -Dlf.assetsDir argument.");
         } catch (Throwable ignored) {
             if (Agent.getSetting("lf.assetsDir") == null) {
                 Logger.error("getAssetsDir", "Couldn't get assets root directory! Please specify the path to your assets directory with the -Dlf.assetsDir argument.");

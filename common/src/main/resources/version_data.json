@@ -38,6 +38,20 @@
         ]
     },
     {
+        "version": "^c0\\.24-dev(?:.+)?",
+        "desc": "c0.24-dev (newsound/* keys)",
+        "assetIndex": "20100607",
+        "settings": [
+            "lf.proxy.serveAs64x32",
+            "lf.proxy.convertAlexToSteve",
+            "lf.proxy.rotateBottomTextures",
+            "lf.proxy.overlayOuterBodyToBase",
+            "java.util.Arrays.useLegacyMergeSort=true",
+            "lf.applet",
+            "lf.auth-on-server-join"
+        ]
+    },
+    {
         "version": "^c0\\.(?:2[4-9]|30)(?:.+)?",
         "desc": "c0.24_st to c0.30",
         "assetIndex": "c0.0.22a_01",

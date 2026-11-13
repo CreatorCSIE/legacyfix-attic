@@ -37,8 +37,11 @@ public class Java6RefsPatch extends Patch {
                 }
 
                 try {
+                    // Head-insert the input bytes: appendClassPath would let the
+                    // game jar on the system path win resolution in get(), patching
+                    // stale original bytes and discarding upstream transformer output.
                     ClassPool ctPool = new ClassPool(true);
-                    ctPool.appendClassPath(new ByteArrayClassPath(name, bytecode));
+                    ctPool.insertClassPath(new ByteArrayClassPath(name, bytecode));
                     CtClass clas = ctPool.get(name);
 
                     final String finalName = name;

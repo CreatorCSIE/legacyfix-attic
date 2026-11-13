@@ -160,8 +160,14 @@ public class Agent {
                     List<CtTransformer> ctTransformers = patcher.getCtTransformers().get(dotName);
                     if (ctTransformers != null && !ctTransformers.isEmpty()) {
                         try {
+                            // insertClassPath (head), not appendClassPath: the system
+                            // path includes the game jar, and javassist resolves get()
+                            // in path order - appending would let the ORIGINAL jar bytes
+                            // win over currentBuffer, silently discarding bytecode from
+                            // upstream transformers (e.g. a -javaagent registered before
+                            // legacyfix). Head-insert makes the input bytes authoritative.
                             ClassPool ctPool = new ClassPool(true);
-                            ctPool.appendClassPath(new ByteArrayClassPath(dotName, currentBuffer));
+                            ctPool.insertClassPath(new ByteArrayClassPath(dotName, currentBuffer));
                             CtClass ctClass = ctPool.get(dotName);
 
                             for (CtTransformer ctTransformer : ctTransformers) {
